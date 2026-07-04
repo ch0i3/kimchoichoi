@@ -2,9 +2,10 @@
 import './style.css';
 import { CHANNELS, DEFAULT_CHANNEL, ENTRY_JAR, getChannel, channelIndex } from './channels.js';
 import {
-  myId, joinRoom, switchRoom, leave, broadcastBeadDone, fmtDuration,
+  myId, joinRoom, switchRoom, leave, broadcastBeadDone, broadcastChat, fmtDuration,
 } from './realtime.js';
 import { createCairn } from './cairn.js';
+import { createPedometer } from './pedometer.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls) => { const n = document.createElement(tag); if (cls) n.className = cls; return n; };
@@ -16,6 +17,24 @@ let activeIdx = 0;
 let cairn = null;
 let cairnCanvas = null;
 let beadCount = 0;
+let dadamWaterEl = null;
+let waterPct = 0;
+const WATER_STEP = 16; // 한마디당 채워지는 비율(%)
+let chimeEl = null;
+let stepCount = 0;
+const pedo = createPedometer(onStep);
+
+// 다담 수면 물결 — path 하나가 완만하게 모양을 바꾸며(SMIL) 실제 물처럼 출렁인다.
+const WAVE_SVG = `
+  <svg viewBox="0 0 40 16" preserveAspectRatio="none">
+    <path fill="#93c968">
+      <animate attributeName="d" dur="2.6s" repeatCount="indefinite"
+        values="
+          M0,8 Q10,3 20,8 T40,8 V16 H0 Z;
+          M0,8 Q10,13 20,8 T40,8 V16 H0 Z;
+          M0,8 Q10,3 20,8 T40,8 V16 H0 Z" />
+    </path>
+  </svg>`;
 
 // ── 입장 ──────────────────────────────────────────────────
 $('enterJar').src = ENTRY_JAR;
@@ -30,6 +49,7 @@ function enter(nm) {
   buildSidebar();
   buildIndicator();
   buildBeadCounter();
+  buildChatBar();
   cairn = createCairn(cairnCanvas);
   setActive(0);
 }
@@ -47,12 +67,36 @@ function buildPages() {
 
     const head = el('div', 'page-head');
     head.innerHTML = `<h1 class="page-title">${c.name}</h1><p class="page-sub">${c.sub}</p>`;
+    if (c.pedometer) head.appendChild(buildPedoBar());
     page.appendChild(head);
 
     const illo = el('div', 'illo');
     if (c.kind === 'cairn') {
       cairnCanvas = document.createElement('canvas');
       illo.appendChild(cairnCanvas);
+    } else if (c.slug === 'dadam' && c.illoMask) {
+      const wrap = el('div', 'cup-wrap');
+      const water = el('div', 'water-fill empty');
+      water.style.webkitMaskImage = `url(${c.illoMask})`;
+      water.style.maskImage = `url(${c.illoMask})`;
+      water.appendChild(el('div', 'water-body'));
+      const surface = el('div', 'water-surface');
+      surface.innerHTML = WAVE_SVG;
+      water.appendChild(surface);
+      wrap.appendChild(water);
+      const img = document.createElement('img');
+      img.src = c.illo; img.alt = '';
+      wrap.appendChild(img);
+      illo.appendChild(wrap);
+      dadamWaterEl = water;
+    } else if (c.slug === 'pohaeng' && c.illoInline) {
+      const wrap = el('div', 'chime-wrap');
+      wrap.innerHTML = c.illoInline;
+      const svg = wrap.querySelector('svg');
+      svg.classList.add('chime-svg');
+      wrap.addEventListener('click', () => onStep()); // 데스크톱 등 센서 없을 때 수동 테스트용
+      illo.appendChild(wrap);
+      chimeEl = svg;
     } else {
       const img = document.createElement('img');
       img.src = c.illo; img.alt = '';
@@ -89,6 +133,8 @@ function setActive(i) {
   updateIndicator(i);
   updateSidebarActive(c.slug);
   $('beadCounter').classList.toggle('hidden', c.slug !== 'beonnoe');
+  $('chatBar').classList.toggle('hidden', !c.chat);
+  $('presence').classList.toggle('hidden', !!c.chat);
 
   if (c.slug === 'chamseon') { cairn.reset(); cairn.start(); } else { cairn.stop(); }
   switchToRoom(c.slug);
@@ -99,6 +145,7 @@ const handlers = {
   onSync: renderPresence,
   onBeadDone: ({ name: who }) => { ripple(`${who}님이 번뇌를 내려놓았습니다`); if (currentSlug === 'chamseon') cairn.addStone(); },
   onStone: ({ name: who }) => { ripple(`${who}님이 돌 하나를 얹었습니다`); if (currentSlug === 'chamseon') cairn.addStone(); },
+  onChat: ({ name: who, text }) => { ripple(`${who}: ${text}`); if (currentSlug === 'dadam') fillWater(); },
 };
 
 async function switchToRoom(slug) {
@@ -178,6 +225,133 @@ function onBeadTap(e) {
     beadCount = 0;
     setTimeout(() => { $('beadCounter').querySelector('.num').textContent = '0'; }, 500);
   }
+}
+
+// ── 다담 채팅 · 찻잔 물 채우기 ─────────────────────────────
+function buildChatBar() {
+  const bar = el('form');
+  bar.id = 'chatBar';
+  bar.classList.add('hidden');
+  bar.innerHTML = `
+    <input id="chatInput" type="text" maxlength="60" placeholder="차분히 한마디 건네보세요" autocomplete="off" />
+    <button type="submit" id="chatSendBtn" aria-label="보내기">
+      <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+        <path d="M2 9h13M9 3l6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>`;
+  bar.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = $('chatInput');
+    const text = input.value.trim().slice(0, 60);
+    if (!text) return;
+    input.value = '';
+    ripple(text);
+    fillWater();
+    if (channel) broadcastChat(channel, name, text);
+  });
+  $('app').appendChild(bar);
+}
+
+function fillWater() {
+  waterPct = Math.min(100, waterPct + WATER_STEP);
+  setWaterLevel(waterPct);
+  if (waterPct >= 100) {
+    setTimeout(() => {
+      waterPct = 0;
+      setWaterLevel(0);
+      ripple('찻잔이 가득 차 비워냅니다');
+    }, 900);
+  }
+}
+function setWaterLevel(pct) {
+  if (!dadamWaterEl) return;
+  dadamWaterEl.style.setProperty('--level', `${pct}%`);
+  dadamWaterEl.classList.toggle('empty', pct <= 0);
+}
+
+// ── 포행 만보기 · 풍경(風磬) 흔들림 ─────────────────────────
+function buildPedoBar() {
+  const bar = el('div', 'pedo-bar');
+  bar.innerHTML = `
+    <button type="button" id="pedoBtn">만보기 연결</button>
+    <p id="pedoCount" class="hidden"><strong>0</strong>걸음</p>`;
+  bar.querySelector('#pedoBtn').addEventListener('click', connectPedometer);
+  return bar;
+}
+
+async function connectPedometer() {
+  const btn = $('pedoBtn');
+  unlockChimeAudio(); // 버튼 클릭 = 사용자 제스처 → 오디오 컨텍스트 미리 풀어둔다
+  if (!pedo.supported()) {
+    btn.textContent = '이 기기에서는 지원되지 않아요';
+    btn.disabled = true;
+    return;
+  }
+  btn.textContent = '연결 중…';
+  const ok = await pedo.start();
+  if (ok) {
+    btn.classList.add('hidden');
+    $('pedoCount').classList.remove('hidden');
+  } else {
+    btn.textContent = '연결 실패 · 다시 시도';
+  }
+}
+
+function onStep() {
+  stepCount += 1;
+  const count = $('pedoCount');
+  if (count) count.querySelector('strong').textContent = stepCount;
+  swingChime();
+  playChimeSound();
+}
+
+// Web Animations API로 직접 재생 — CSS 클래스 토글 방식은 클릭이 겹치거나
+// 빠르게 연타할 때 애니메이션이 재시작되지 않는 경우가 있어 더 확실한 방식으로 교체.
+function swingChime() {
+  if (!chimeEl) return;
+  chimeEl.animate(
+    [
+      { transform: 'rotate(0deg)' },
+      { transform: 'rotate(7deg)', offset: 0.14 },
+      { transform: 'rotate(-5deg)', offset: 0.38 },
+      { transform: 'rotate(2.6deg)', offset: 0.60 },
+      { transform: 'rotate(-1.2deg)', offset: 0.80 },
+      { transform: 'rotate(0deg)' },
+    ],
+    { duration: 1300, easing: 'cubic-bezier(.22,.9,.32,1)' },
+  );
+}
+
+// 걸음마다 짧은 종소리(합성음) — 외부 음원 파일 없이 Web Audio로 생성.
+let audioCtx = null;
+function unlockChimeAudio() {
+  if (audioCtx) return;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (Ctx) audioCtx = new Ctx();
+}
+function playChimeSound() {
+  unlockChimeAudio();
+  if (!audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  const now = audioCtx.currentTime;
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.22, now + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
+  gain.connect(audioCtx.destination);
+
+  [880, 1320, 1760].forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const partialGain = audioCtx.createGain();
+    partialGain.gain.value = i === 0 ? 1 : 0.28 / i;
+    osc.connect(partialGain);
+    partialGain.connect(gain);
+    osc.start(now);
+    osc.stop(now + 1.1);
+  });
 }
 
 // ── 공명 파동 ─────────────────────────────────────────────

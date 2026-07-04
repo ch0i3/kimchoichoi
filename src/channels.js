@@ -1,7 +1,9 @@
 // 채널(= 템플스테이 일과) 설정 — Figma "보이드 해커톤" 디자인 토큰 반영.
 // 4채널, 잠긴 방 없음. 색은 Figma에서 추출한 값.
 import dadamCup from './illustrations/dadam_cup.svg';
+import dadamCupMask from './illustrations/dadam_cup_mask.svg';
 import pohaengChime from './illustrations/pohaeng_chime.svg';
+import pohaengChimeInline from './illustrations/pohaeng_chime.svg?raw';
 import beonnoeJar from './illustrations/beonnoe_jar.svg';
 
 export const CHANNELS = [
@@ -18,6 +20,7 @@ export const CHANNELS = [
     sidebarSub: '천천히 걸으며 주변을 바라보는 시간',
     bg: '#BEDDD3', ink: '#1D5B47', accent: '#69B099',
     kind: 'img', illo: pohaengChime, illoRatio: 197 / 350,
+    illoInline: pohaengChimeInline, pedometer: true,
   },
   {
     slug: 'dadam', name: '다담',
@@ -25,6 +28,7 @@ export const CHANNELS = [
     sidebarSub: '차분한 대화와 함께하는 시간',
     bg: '#BFDDBE', ink: '#244D23', accent: '#7DB67B',
     kind: 'img', illo: dadamCup, illoRatio: 302 / 197,
+    chat: true, illoMask: dadamCupMask,
   },
   {
     slug: 'beonnoe', name: '번뇌',

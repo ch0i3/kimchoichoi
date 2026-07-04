@@ -60,12 +60,13 @@ export function deriveBoard(roster, now = Date.now()) {
  *   onSync?: (board: Board) => void,
  *   onBeadDone?: (payload: {name: string}) => void,
  *   onStone?: (payload: {name: string}) => void,
+ *   onChat?: (payload: {name: string, text: string}) => void,
  *   onStatus?: (status: string) => void,
  * }} [handlers]
  * @returns {import('@supabase/supabase-js').RealtimeChannel}
  */
 export function joinRoom(slug, name, handlers = {}) {
-  const { onSync, onBeadDone, onStone, onStatus } = handlers;
+  const { onSync, onBeadDone, onStone, onChat, onStatus } = handlers;
   const joinedAt = Date.now(); // 이 방 기준 머문 시작점 — 재접속해도 유지(경과시간 안 끊김)
   let roster = [];
   let ticker = null;
@@ -84,6 +85,7 @@ export function joinRoom(slug, name, handlers = {}) {
 
   if (onBeadDone) channel.on('broadcast', { event: 'bead_done' }, ({ payload }) => onBeadDone(payload));
   if (onStone) channel.on('broadcast', { event: 'stone' }, ({ payload }) => onStone(payload));
+  if (onChat) channel.on('broadcast', { event: 'chat' }, ({ payload }) => onChat(payload));
 
   channel.subscribe(async (status) => {
     onStatus?.(status);
@@ -119,6 +121,11 @@ export function broadcastBeadDone(channel, name) {
 /** 돌 얹힘 공명 송신(선택). 수신자는 onStone 으로 받는다. */
 export function broadcastStone(channel, name) {
   channel?.send({ type: 'broadcast', event: 'stone', payload: { name } });
+}
+
+/** 다담(茶談) 채팅 한마디 송신. 수신자는 onChat 으로 받는다. */
+export function broadcastChat(channel, name, text) {
+  channel?.send({ type: 'broadcast', event: 'chat', payload: { name, text } });
 }
 
 /** 방에서 나간다(Presence 소멸 + 타이머 정리). */

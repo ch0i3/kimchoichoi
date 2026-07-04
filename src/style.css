@@ -73,12 +73,66 @@ img { max-width: 100%; display: block; }
 }
 .page-sub { margin-top: 6px; font-size: 16px; color: var(--page-ink); opacity: 0.72; }
 
+/* 포행 만보기 */
+.pedo-bar { margin-top: 14px; }
+#pedoBtn {
+  border: none; border-radius: 999px; padding: 8px 16px;
+  background: rgba(255,255,255,0.65); color: var(--page-ink);
+  font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer;
+}
+#pedoBtn:disabled { cursor: default; opacity: 0.6; }
+#pedoCount {
+  display: inline-block; padding: 8px 16px; border-radius: 999px;
+  background: rgba(255,255,255,0.65); color: var(--page-ink); font-size: 13px;
+}
+#pedoCount strong { font-size: 15px; margin-right: 3px; }
+
 /* 중앙 일러스트 */
 .illo { position: absolute; inset: 0; display: grid; place-items: center; }
 .illo canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .illo img { width: min(62vw, 300px); filter: drop-shadow(0 6px 14px rgba(90,110,70,0.12)); }
 .page[data-kind="jar"] .illo img,
 .page[data-kind="dadam"] .illo img { cursor: pointer; }
+
+/* 다담 찻잔 — 물 채우기 */
+.cup-wrap { position: relative; width: min(62vw, 300px); aspect-ratio: 299 / 197; }
+.cup-wrap img {
+  position: relative; z-index: 1; width: 100%; height: 100%;
+  filter: drop-shadow(0 6px 14px rgba(90,110,70,0.12));
+}
+.water-fill {
+  position: absolute; inset: 0; z-index: 0; overflow: hidden;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  -webkit-mask-position: center; mask-position: center;
+  --level: 0%;
+}
+.water-body {
+  position: absolute; left: 0; right: 0; bottom: 0; height: var(--level);
+  background: linear-gradient(180deg, #a9d67c 0%, #93c968 55%, #6fae4d 100%);
+  transition: height 0.9s cubic-bezier(.32,.9,.35,1);
+}
+/* 수면 물결 — SVG path 하나가 모양을 부드럽게 바꿔가며(SMIL) 실제 수면처럼
+   완만한 곡선으로 출렁인다. 내부 svg는 main.js 에서 삽입한다. */
+.water-surface {
+  position: absolute; left: 0; right: 0; height: 16px; bottom: var(--level);
+  transform: translateY(50%);
+  overflow: hidden;
+  transition: bottom 0.9s cubic-bezier(.32,.9,.35,1), opacity 0.3s ease;
+}
+.water-surface svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.water-fill.empty .water-surface { opacity: 0; }
+
+/* 포행 풍경(風磬) — 걸음마다 흔들림.
+   회전축을 종 바로 위 고리가 아니라, 처마에 매달린 지점(그래픽 훨씬 위 가상의
+   점)으로 잡아야 종+물고기 전체가 옆으로 크게 흔들리는 것처럼 보인다.
+   (축이 종 바로 위에 있으면 종은 축에 가까워 거의 안 움직이고 물고기만 흔들림) */
+.chime-wrap { width: min(56vw, 260px); cursor: pointer; }
+.chime-svg {
+  display: block; width: 100%; height: auto;
+  transform-origin: 50% -55%;
+  filter: drop-shadow(0 6px 14px rgba(30,80,60,0.14));
+}
 
 /* ── 고정 오버레이 ─────────────────────────── */
 #hamburger {
@@ -132,6 +186,25 @@ img { max-width: 100%; display: block; }
   80% { opacity: 1; }
   100% { opacity: 0; transform: translateY(-16px); }
 }
+
+/* 다담 채팅 입력창 */
+#chatBar {
+  position: absolute; left: 24px; right: 24px; bottom: 78px; z-index: 6;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 6px 6px 20px; border-radius: 999px;
+  background: rgba(255,255,255,0.92); box-shadow: 0 4px 18px rgba(40,60,30,0.1);
+}
+#chatBar input {
+  flex: 1; min-width: 0; border: none; outline: none; background: none;
+  font-family: var(--font-body); font-size: 14px; color: var(--ink);
+}
+#chatBar input::placeholder { color: rgba(36,77,35,0.4); }
+#chatSendBtn {
+  width: 34px; height: 34px; flex: 0 0 auto; border-radius: 999px; border: none;
+  background: var(--accent); color: #fff; display: grid; place-items: center; cursor: pointer;
+  transition: transform 0.12s;
+}
+#chatSendBtn:active { transform: scale(0.9); }
 
 /* 108 카운터 (번뇌) */
 #beadCounter {
