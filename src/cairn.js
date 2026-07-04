@@ -38,8 +38,18 @@ export function createCairn(canvas) {
   let startTime = 0, running = false, raf = 0;
   let bonus = 0;              // addStone()으로 추가된 돌
   let prevCount = -1, bornAt = 0;
-  /** @type {{stones:number, dx:number, scale:number, alpha:number}[]} 뒤로 물러난 탑 */
-  const background = [];
+  /** @type {{side:number, x:number, scale:number, alpha:number, jit:object[]}[]} 완성돼 물러난 돌탑(한 묶음) */
+  const receded = [];
+  let completedCount = 0;
+
+  // 돌마다 살짝 다른 위치/크기(균형은 유지). 탑마다 한 번 정하고 그 탑이 사는 동안 고정.
+  const rand = (a) => (Math.random() * 2 - 1) * a;
+  const makeJit = () => STONES.map((s, i) => ({
+    dx: rand(3 + i * 3.5),   // 위로 갈수록 좌우로 조금 더 흔들림
+    dy: rand(1.5 + i * 1.2),
+    dw: rand(4),             // 너비도 살짝
+  }));
+  let currentJit = makeJit();
 
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -88,10 +98,11 @@ export function createCairn(canvas) {
   }
 
   // 돌 하나 그리기 (탑 그라디언트를 공유해 위 흰색 → 아래 투명)
-  function drawStone(s, L, grad, alpha, dy) {
-    const cx = L.originX + s.cx * L.scale;
-    const cy = L.originY + s.cy * L.scale + dy;
-    const w = s.w * L.scale;
+  function drawStone(s, L, grad, alpha, dyAnim, jit) {
+    const jx = jit ? jit.dx : 0, jy = jit ? jit.dy : 0, jw = jit ? jit.dw : 0;
+    const cx = L.originX + (s.cx + jx) * L.scale;
+    const cy = L.originY + (s.cy + jy) * L.scale + dyAnim;
+    const w = (s.w + jw) * L.scale;
     const h = s.h * L.scale;
 
     ctx.save();
@@ -118,7 +129,7 @@ export function createCairn(canvas) {
   }
 
   // 탑 하나 그리기. n = 이 탑에 보일 돌 개수. growT = 최신 돌 등장 진행도(0~1).
-  function drawTower(n, L, growT, globalAlpha = 1) {
+  function drawTower(n, L, growT, globalAlpha = 1, jit = null) {
     // 탑 전체 세로 그라디언트: 위 흰색(불투명) → 아래 흰색(투명)
     const grad = ctx.createLinearGradient(0, L.originY, 0, L.originY + L.towerH * 1.016);
     grad.addColorStop(0, 'rgba(255,255,255,1)');
@@ -127,8 +138,8 @@ export function createCairn(canvas) {
     for (let i = 0; i < n && i < MAX_STONES; i++) {
       const isNewest = i === n - 1 && growT < 1;
       const a = globalAlpha * (isNewest ? growT : 1);
-      const dy = isNewest ? -(1 - growT) * 16 : 0; // 살짝 위에서 내려앉음
-      drawStone(STONES[i], L, grad, a, dy);
+      const dyAnim = isNewest ? -(1 - growT) * 16 : 0; // 살짝 위에서 내려앉음
+      drawStone(STONES[i], L, grad, a, dyAnim, jit ? jit[i] : null);
     }
   }
 
@@ -136,36 +147,53 @@ export function createCairn(canvas) {
     if (!running) return;
     resizeIfNeeded();
 
-    // 배경
-    ctx.fillStyle = config.background;
-    ctx.fillRect(0, 0, W, H);
+    // 투명 클리어 (페이지 배경색 + 배경 도형이 비치도록)
+    ctx.clearRect(0, 0, W, H);
 
     const L = layout();
 
-    // 뒤로 물러난 탑들(배경처럼)
-    for (const b of background) {
-      const bl = { ...L, scale: L.scale * b.scale, originX: L.originX + b.dx, originY: L.originY + L.towerH * (1 - b.scale) };
-      drawTower(MAX_STONES, bl, 1, b.alpha);
-    }
+    const baseBottom = L.originY + L.towerH; // 돌탑이 서는 바닥선
 
     let n = stoneCount();
 
-    // 탑 완성 → 뒤로 물러나고 새 탑 시작
+    // 탑 완성 → '완성된 돌탑 한 묶음'을 물러나게 (중앙 원본 위치에서 출발해 옆으로 미끄러짐)
     while (n > MAX_STONES) {
-      const side = background.length % 2 === 0 ? -1 : 1;
-      background.push({ stones: MAX_STONES, dx: side * W * (0.14 + 0.04 * background.length), scale: 0.6, alpha: 0.45 });
-      if (background.length > 6) background.shift();
+      const side = completedCount % 2 === 0 ? -1 : 1;
+      receded.push({ side, x: 0, scale: 1, alpha: 0.55, jit: currentJit });
+      currentJit = makeJit();          // 새 탑은 새 배치
+      completedCount += 1;
+      if (receded.length > 6) receded.shift();
       startTime += MAX_STONES * config.stoneIntervalMs;
       const timedNow = Math.floor((Date.now() - startTime) / config.stoneIntervalMs);
       bonus = Math.max(0, n - MAX_STONES - timedNow);
       n = stoneCount();
     }
 
-    // 최신 돌 등장 애니메이션
+    // 물러난 돌탑들: 같은 쪽에서 새것일수록 앞(가깝고 진하게). 목표 위치로 부드럽게 이징.
+    const depth = { '-1': 0, '1': 0 };
+    for (let i = receded.length - 1; i >= 0; i--) {
+      const t = receded[i];
+      const d = depth[t.side]++;
+      const tx = t.side * W * (0.30 + 0.12 * d);       // 좌우 고정 슬롯 (무한정 안 밀림)
+      const ts = Math.max(0.55, 0.82 - 0.08 * d);      // 뒤로 갈수록 작게
+      const ta = Math.max(0.12, 0.32 - 0.09 * d);      // 뒤로 갈수록 흐리게
+      t.x += (tx - t.x) * 0.12;
+      t.scale += (ts - t.scale) * 0.12;
+      t.alpha += (ta - t.alpha) * 0.12;
+    }
+
+    // 작고 흐린(뒤) 것부터 그려 앞쪽이 위로. 모두 바닥선에 정렬해 '둘러쌓인' 느낌.
+    for (const t of [...receded].sort((a, b) => a.scale - b.scale)) {
+      const scale = L.scale * t.scale;
+      const towerW = VB_W * scale, towerH = VB_H * scale;
+      const rl = { scale, towerW, towerH, originX: W / 2 - towerW / 2 + t.x, originY: baseBottom - towerH };
+      drawTower(MAX_STONES, rl, 1, t.alpha, t.jit);
+    }
+
+    // 중앙에서 자라는 탑 (맨 앞)
     if (n !== prevCount) { prevCount = n; bornAt = Date.now(); }
     const growT = Math.min(1, (Date.now() - bornAt) / 600);
-
-    drawTower(n, L, growT);
+    drawTower(n, L, growT, 1, currentJit);
     raf = requestAnimationFrame(frame);
   }
 
@@ -183,7 +211,9 @@ export function createCairn(canvas) {
     raf = 0;
   }
   function reset() {
-    background.length = 0;
+    receded.length = 0;
+    completedCount = 0;
+    currentJit = makeJit();
     bonus = 0;
     prevCount = -1;
     startTime = Date.now();

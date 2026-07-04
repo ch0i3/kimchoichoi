@@ -1,9 +1,20 @@
+/* 디스플레이 폰트 — Paperlogy (projectnoonnu 배포) */
+@font-face { font-family: 'Paperozi'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-1Thin.woff2') format('woff2'); font-weight: 100; font-display: swap; }
+@font-face { font-family: 'Paperozi'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-2ExtraLight.woff2') format('woff2'); font-weight: 200; font-display: swap; }
+@font-face { font-family: 'Paperozi'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-3Light.woff2') format('woff2'); font-weight: 300; font-display: swap; }
+@font-face { font-family: 'Paperozi'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Paperozi'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Paperozi'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-6SemiBold.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Paperozi'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Paperozi'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-8ExtraBold.woff2') format('woff2'); font-weight: 800; font-display: swap; }
+@font-face { font-family: 'Paperozi'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-9Black.woff2') format('woff2'); font-weight: 900; font-display: swap; }
+
 :root {
   /* 활성 채널 토큰 — main.js 가 채널마다 갱신 */
   --bg: #CEDDBE;
   --ink: #4A5A38;
   --accent: #97B17C;
-  --font-title: 'Paperlogy', 'Pretendard', -apple-system, sans-serif;
+  --font-title: 'Paperozi', 'Pretendard', -apple-system, sans-serif;
   --font-body: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', sans-serif;
 }
 
@@ -73,12 +84,69 @@ img { max-width: 100%; display: block; }
 }
 .page-sub { margin-top: 6px; font-size: 16px; color: var(--page-ink); opacity: 0.72; }
 
+/* 배경 도형 레이어 (일러스트 뒤) — 375×812 기준 박스를 화면 중앙 기준 균일 스케일 */
+.page-bg { position: absolute; inset: 0; overflow: hidden; z-index: 0; }
+.page-bg-inner {
+  position: absolute; left: 50%; top: 50%; width: 375px; height: 812px;
+  transform: translate(-50%, -50%) scale(var(--page-scale, 1));
+}
+.bg-layer { position: absolute; height: auto; }
+
 /* 중앙 일러스트 */
-.illo { position: absolute; inset: 0; display: grid; place-items: center; }
+.illo { position: absolute; inset: 0; display: grid; place-items: center; z-index: 1; }
 .illo canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .illo img { width: min(62vw, 300px); filter: drop-shadow(0 6px 14px rgba(90,110,70,0.12)); }
 .page[data-kind="jar"] .illo img,
 .page[data-kind="dadam"] .illo img { cursor: pointer; }
+
+/* 포행 만보기 (page-head 안) */
+.pedo-bar { margin-top: 14px; }
+#pedoBtn {
+  border: none; border-radius: 999px; padding: 8px 16px;
+  background: rgba(255,255,255,0.65); color: var(--page-ink);
+  font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer;
+}
+#pedoBtn:disabled { cursor: default; opacity: 0.6; }
+#pedoCount {
+  display: inline-block; padding: 8px 16px; border-radius: 999px;
+  background: rgba(255,255,255,0.65); color: var(--page-ink); font-size: 13px;
+}
+#pedoCount strong { font-size: 15px; margin-right: 3px; }
+
+/* 다담 찻잔 — 물 채우기 */
+.cup-wrap { position: relative; width: min(62vw, 300px); aspect-ratio: 299 / 197; }
+.cup-wrap img {
+  position: relative; z-index: 1; width: 100%; height: 100%;
+  filter: drop-shadow(0 6px 14px rgba(90,110,70,0.12));
+}
+.water-fill {
+  position: absolute; inset: 0; z-index: 0; overflow: hidden;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  -webkit-mask-position: center; mask-position: center;
+  --level: 0%;
+}
+.water-body {
+  position: absolute; left: 0; right: 0; bottom: 0; height: var(--level);
+  background: linear-gradient(180deg, #a9d67c 0%, #93c968 55%, #6fae4d 100%);
+  transition: height 0.9s cubic-bezier(.32,.9,.35,1);
+}
+/* 수면 물결 — SVG path 하나가 SMIL로 모양을 바꿔 완만하게 출렁인다. */
+.water-surface {
+  position: absolute; left: 0; right: 0; height: 16px; bottom: var(--level);
+  transform: translateY(50%); overflow: hidden;
+  transition: bottom 0.9s cubic-bezier(.32,.9,.35,1), opacity 0.3s ease;
+}
+.water-surface svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.water-fill.empty .water-surface { opacity: 0; }
+
+/* 포행 풍경(風磬) — 걸음마다 흔들림. 회전축을 그래픽 위쪽 가상 지점으로. */
+.chime-wrap { width: min(50vw, 190px); cursor: pointer; } /* Figma 일러스트 폭(~197)에 맞춰 축소 */
+.chime-svg {
+  display: block; width: 100%; height: auto;
+  transform-origin: 50% -55%;
+  filter: drop-shadow(0 6px 14px rgba(30,80,60,0.14));
+}
 
 /* ── 고정 오버레이 ─────────────────────────── */
 #hamburger {
@@ -86,28 +154,70 @@ img { max-width: 100%; display: block; }
   width: 32px; height: 32px; display: grid; place-items: center;
   background: none; border: none; color: var(--ink); cursor: pointer;
 }
+#muteBtn {
+  position: absolute; top: 46px; right: 35px; z-index: 6;
+  width: 32px; height: 32px; display: grid; place-items: center;
+  background: none; border: none; color: var(--ink); cursor: pointer; opacity: 0.85;
+}
+#muteBtn .slash { display: none; }
+#muteBtn.muted .waves { opacity: 0; }
+#muteBtn.muted .slash { display: block; }
 
 #presence {
   position: absolute; left: 0; right: 0; bottom: 78px; z-index: 5;
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-  pointer-events: none;
+  display: flex; justify-content: center; pointer-events: none;
+  transition: bottom 0.3s ease;
 }
-#board {
-  list-style: none; display: flex; flex-direction: column; gap: 2px;
-  align-items: center; max-height: 34vh; overflow: hidden;
+/* 다담: 채팅바(bottom:78, 높이 ~46 → 상단 ~124) 위로 14px 띄워 현황 배치 */
+#app.chat-layout #presence { bottom: 138px; }
+
+/* 사람들 현황 — Figma 'list' 컴포넌트 (close/open). 하나의 바가 슬로우 스마트애니메이션으로 펼쳐짐 */
+#statusBar {
+  pointer-events: auto;
+  width: min(90vw, 305px); overflow: hidden;
+  border-radius: 12px; color: #fff;
+  background: rgba(58,58,58,0.20);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 6px 24px rgba(20,24,20,0.20);
 }
-#board li {
-  display: flex; gap: 8px; align-items: baseline;
-  font-size: 12.5px; color: var(--ink); opacity: 0.62;
+#statusHead {
+  width: 100%; height: 37px; padding: 0 20px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  border: none; background: none; color: #fff; cursor: pointer;
+  font-family: var(--font-body);
 }
-#board li em { font-style: normal; font-weight: 600; opacity: 0.9; }
-#board time { font-variant-numeric: tabular-nums; opacity: 0.75; }
-#pill {
-  padding: 6px 18px; border-radius: 999px;
-  background: var(--accent); color: #fff;
-  font-size: 13px; font-weight: 500; white-space: nowrap;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+#statusCount { font-size: 14px; font-weight: 500; white-space: nowrap; }
+#statusBar.open #statusCount { font-weight: 600; }
+.caret { flex: 0 0 auto; transition: transform 0.55s cubic-bezier(0.33, 0, 0.2, 1); }
+#statusBar.open .caret { transform: rotate(180deg); }
+
+/* 슬로우 확장: grid-template-rows 0fr→1fr 로 높이를 부드럽게 */
+.status-body {
+  display: grid; grid-template-rows: 0fr;
+  transition: grid-template-rows 0.55s cubic-bezier(0.33, 0, 0.2, 1);
 }
+#statusBar.open .status-body { grid-template-rows: 1fr; }
+.status-inner { overflow: hidden; }
+.status-divider { height: 1px; margin: 3px 20px 0; background: rgba(255,255,255,0.22); }
+
+#rosterList {
+  list-style: none; margin: 8px 12px 12px 20px; padding-right: 8px;
+  max-height: 30vh; overflow-y: auto;
+}
+#rosterList li {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 26px; gap: 12px; padding: 0 6px; border-radius: 4px;
+}
+#rosterList .nm { font-size: 14px; font-weight: 500; white-space: nowrap; }
+#rosterList .nm .tag { font-size: 12px; font-weight: 400; margin-left: 4px; }
+#rosterList time { font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
+#rosterList li.me { background: rgba(255,255,255,0.20); } /* '나' 행 하이라이트 (Figma 변경분) */
+#rosterList .empty { justify-content: center; color: rgba(255,255,255,0.55); font-size: 13px; height: auto; padding: 4px 0 8px; }
+/* 커스텀 스크롤바 (Figma: 밝은 트랙 + 흰 썸) */
+#rosterList::-webkit-scrollbar { width: 8px; }
+#rosterList::-webkit-scrollbar-track { background: rgba(233,238,228,0.30); border-radius: 8px; }
+#rosterList::-webkit-scrollbar-thumb { background: #fff; border-radius: 8px; }
+#rosterList { scrollbar-width: thin; scrollbar-color: #fff rgba(233,238,228,0.30); }
 
 #indicator {
   position: absolute; left: 0; right: 0; bottom: 48px; z-index: 5;
@@ -133,14 +243,33 @@ img { max-width: 100%; display: block; }
   100% { opacity: 0; transform: translateY(-16px); }
 }
 
-/* 108 카운터 (번뇌) */
+/* 다담 채팅 입력창 */
+#chatBar {
+  position: absolute; left: 24px; right: 24px; bottom: 78px; z-index: 6;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 6px 6px 20px; border-radius: 999px;
+  background: rgba(255,255,255,0.92); box-shadow: 0 4px 18px rgba(40,60,30,0.1);
+}
+#chatBar input {
+  flex: 1; min-width: 0; border: none; outline: none; background: none;
+  font-family: var(--font-body); font-size: 14px; color: var(--ink);
+}
+#chatBar input::placeholder { color: rgba(36,77,35,0.4); }
+#chatSendBtn {
+  width: 34px; height: 34px; flex: 0 0 auto; border-radius: 999px; border: none;
+  background: var(--accent); color: #fff; display: grid; place-items: center; cursor: pointer;
+  transition: transform 0.12s;
+}
+#chatSendBtn:active { transform: scale(0.9); }
+
+/* 번뇌 카운터 — 항아리 중앙에 표시 */
 #beadCounter {
-  position: absolute; left: 50%; top: 40%; transform: translate(-50%,-50%);
+  position: absolute; left: 0; right: 0; top: 54%; transform: translateY(-50%);
   z-index: 4; font-family: var(--font-title); font-weight: 700;
   color: var(--ink); pointer-events: none; text-align: center;
 }
-#beadCounter .num { font-size: 56px; line-height: 1; }
-#beadCounter .sub { font-size: 13px; opacity: 0.6; margin-top: 4px; }
+#beadCounter .num { font-size: 52px; line-height: 1; font-variant-numeric: tabular-nums; }
+#beadCounter .sub { font-size: 13px; font-weight: 400; opacity: 0.6; margin-top: 6px; }
 
 /* ── 사이드바 (어두운 프로스티드) ───────────── */
 #scrim {

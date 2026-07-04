@@ -30,9 +30,30 @@
       </svg>
     </button>
 
+    <button id="muteBtn" aria-label="소리 끄기">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/>
+        <g class="waves">
+          <path d="M16 8.8a4.2 4.2 0 010 6.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          <path d="M18.8 6.2a7.6 7.6 0 010 11.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </g>
+        <line class="slash" x1="4" y1="3.5" x2="21" y2="20.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+      </svg>
+    </button>
+
     <div id="presence">
-      <ul id="board"></ul>
-      <div id="pill">함께 머무는 중…</div>
+      <section id="statusBar" class="closed">
+        <button id="statusHead" aria-expanded="false">
+          <span id="statusCount">함께 머무는 중…</span>
+          <svg class="caret" width="17" height="9" viewBox="0 0 17 9" fill="none" aria-hidden="true">
+            <path d="M1 1l7.5 7 7.5-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div class="status-body"><div class="status-inner">
+          <div class="status-divider"></div>
+          <ul id="rosterList"></ul>
+        </div></div>
+      </section>
     </div>
 
     <div id="indicator"></div>
