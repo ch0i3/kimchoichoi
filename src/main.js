@@ -29,16 +29,24 @@ let chimeEl = null;
 let stepCount = 0;
 const pedo = createPedometer(onStep);
 
-// 다담 수면 물결 — path 하나가 SMIL로 모양을 바꾸며 실제 물처럼 출렁인다.
-const WAVE_SVG = `
-  <svg viewBox="0 0 40 16" preserveAspectRatio="none">
-    <path fill="#93c968">
-      <animate attributeName="d" dur="2.6s" repeatCount="indefinite"
-        values="
-          M0,8 Q10,3 20,8 T40,8 V16 H0 Z;
-          M0,8 Q10,13 20,8 T40,8 V16 H0 Z;
-          M0,8 Q10,3 20,8 T40,8 V16 H0 Z" />
-    </path>
+// 다담 찻잔 물 — 찻잔 내부 모양(clipPath)에 물을 클립. 수면은 SMIL로 출렁이고,
+// 물 그룹(.cw-level)을 위/아래로 옮겨 수위를 조절한다. CSS 마스크보다 모바일에서 확실.
+const CUP_WATER_SVG = `
+  <svg class="cup-water" viewBox="0 0 299 197" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <clipPath id="dadamCupClip"><path d="M54.2138 133.634C70.3843 150.264 87.7286 161.796 106.722 169.208L99.9665 197H130.468H170.731H201.233L194.477 169.208C213.47 161.796 226.639 157.131 242.809 140.5C258.461 124.403 267.502 96.1664 272.66 73.5128C277.56 51.9877 282.724 29.3039 297.657 8.88408C300.228 5.36783 297.915 1.83756e-05 293.637 1.79061e-05L170.731 0H130.468L3.07653 1.8174e-05C0.466756 1.85463e-05 -0.933019 3.14059 0.700608 5.17583C17.8442 26.534 23.3403 50.6756 28.5394 73.5128C33.6967 96.1664 38.5619 117.537 54.2138 133.634Z"/></clipPath>
+      <linearGradient id="dadamWater" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#a9d67c"/><stop offset="0.55" stop-color="#93c968"/><stop offset="1" stop-color="#6fae4d"/>
+      </linearGradient>
+    </defs>
+    <g clip-path="url(#dadamCupClip)">
+      <g class="cw-level">
+        <path fill="url(#dadamWater)">
+          <animate attributeName="d" dur="2.6s" repeatCount="indefinite"
+            values="M0,7 Q75,0 150,7 T299,7 L299,394 L0,394 Z;M0,7 Q75,14 150,7 T299,7 L299,394 L0,394 Z;M0,7 Q75,0 150,7 T299,7 L299,394 L0,394 Z" />
+        </path>
+      </g>
+    </g>
   </svg>`;
 
 // ── 입장 ──────────────────────────────────────────────────
@@ -93,22 +101,16 @@ function buildPages() {
     } else if (c.kind === 'jar') {
       jarCanvas = document.createElement('canvas');
       illo.appendChild(jarCanvas);
-    } else if (c.slug === 'dadam' && c.illoMask) {
-      // 찻잔: 마스크로 클립한 물 + 물결, 위에 찻잔 이미지
+    } else if (c.slug === 'dadam') {
+      // 찻잔: 내부 모양에 클립된 물(SVG) + 위에 찻잔 이미지
       const wrap = el('div', 'cup-wrap');
-      const water = el('div', 'water-fill empty');
-      water.style.webkitMaskImage = `url(${c.illoMask})`;
-      water.style.maskImage = `url(${c.illoMask})`;
-      water.appendChild(el('div', 'water-body'));
-      const surface = el('div', 'water-surface');
-      surface.innerHTML = WAVE_SVG;
-      water.appendChild(surface);
-      wrap.appendChild(water);
+      wrap.innerHTML = CUP_WATER_SVG;
       const img = document.createElement('img');
       img.src = c.illo; img.alt = '';
       wrap.appendChild(img);
       illo.appendChild(wrap);
-      dadamWaterEl = water;
+      dadamWaterEl = wrap.querySelector('.cw-level');
+      setWaterLevel(waterPct); // 초기 수위 반영
     } else if (c.slug === 'pohaeng' && c.illoInline) {
       // 풍경(風磬): 인라인 SVG를 걸음마다 흔든다. 데스크톱은 클릭=수동 걸음.
       const wrap = el('div', 'chime-wrap');
@@ -221,7 +223,7 @@ function buildSidebar() {
         <div class="ch-name">${c.name}</div>
         <div class="ch-sub">${c.sidebarSub}</div>
       </div>
-      <img class="ch-illo" src="${c.illo || ''}" alt="" />
+      <img class="ch-illo" src="${c.icon || c.illo || ''}" alt="" />
     </li>`).join('');
   $('channelList').addEventListener('click', (e) => {
     const row = e.target.closest('.ch-row');
@@ -305,8 +307,9 @@ function fillWater() {
 }
 function setWaterLevel(pct) {
   if (!dadamWaterEl) return;
-  dadamWaterEl.style.setProperty('--level', `${pct}%`);
-  dadamWaterEl.classList.toggle('empty', pct <= 0);
+  const p = Math.max(0, Math.min(100, pct));
+  const y = 197 * (1 - p / 100); // 0%→197(비움, 물이 컵 아래로), 100%→0(가득)
+  dadamWaterEl.style.transform = `translateY(${y}px)`;
 }
 
 // ── 포행 만보기 · 풍경(風磬) 흔들림 ─────────────────────────

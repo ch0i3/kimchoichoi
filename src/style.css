@@ -77,7 +77,7 @@ img { max-width: 100%; display: block; }
   scroll-snap-align: start; scroll-snap-stop: always;
   overflow: hidden;
 }
-.page-head { position: absolute; top: 84px; left: 35px; right: 35px; z-index: 2; }
+.page-head { position: absolute; top: 112px; left: 35px; right: 35px; z-index: 2; }
 .page-title {
   font-family: var(--font-title); font-weight: 700; font-size: 32px;
   color: var(--page-ink); line-height: 1.1;
@@ -119,26 +119,9 @@ img { max-width: 100%; display: block; }
   position: relative; z-index: 1; width: 100%; height: 100%;
   filter: drop-shadow(0 6px 14px rgba(90,110,70,0.12));
 }
-.water-fill {
-  position: absolute; inset: 0; z-index: 0; overflow: hidden;
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
-  -webkit-mask-position: center; mask-position: center;
-  --level: 0%;
-}
-.water-body {
-  position: absolute; left: 0; right: 0; bottom: 0; height: var(--level);
-  background: linear-gradient(180deg, #a9d67c 0%, #93c968 55%, #6fae4d 100%);
-  transition: height 0.9s cubic-bezier(.32,.9,.35,1);
-}
-/* 수면 물결 — SVG path 하나가 SMIL로 모양을 바꿔 완만하게 출렁인다. */
-.water-surface {
-  position: absolute; left: 0; right: 0; height: 16px; bottom: var(--level);
-  transform: translateY(50%); overflow: hidden;
-  transition: bottom 0.9s cubic-bezier(.32,.9,.35,1), opacity 0.3s ease;
-}
-.water-surface svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.water-fill.empty .water-surface { opacity: 0; }
+/* 물은 찻잔 내부 clipPath에 클립됨. .cw-level 을 위/아래로 옮겨 수위 조절. */
+.cup-water { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; display: block; }
+.cw-level { transform: translateY(197px); transition: transform 0.9s cubic-bezier(.32,.9,.35,1); }
 
 /* 포행 풍경(風磬) — 걸음마다 흔들림. 회전축을 그래픽 위쪽 가상 지점으로. */
 .chime-wrap { width: min(50vw, 190px); cursor: pointer; } /* Figma 일러스트 폭(~197)에 맞춰 축소 */
