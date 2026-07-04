@@ -1,132 +1,198 @@
-// 앱 진입: 입장 → 방 참여 → UI/인터랙션 연결.
+// 앱 진입: 입장 → 4채널 스와이프 → 채널별 realtime · 돌탑 · 사이드바 · 108탭.
 import './style.css';
-import { CHANNELS, DEFAULT_CHANNEL, getChannel } from './channels.js';
+import { CHANNELS, DEFAULT_CHANNEL, ENTRY_JAR, getChannel, channelIndex } from './channels.js';
 import {
-  myId, joinRoom, switchRoom, leave, broadcastBeadDone, broadcastStone, fmtDuration,
+  myId, joinRoom, switchRoom, leave, broadcastBeadDone, fmtDuration,
 } from './realtime.js';
 import { createCairn } from './cairn.js';
 
-let channel = null;
-let name = '';
-let currentSlug = DEFAULT_CHANNEL;
-
 const $ = (id) => document.getElementById(id);
-const cairn = createCairn($('cairn'));
+const el = (tag, cls) => { const n = document.createElement(tag); if (cls) n.className = cls; return n; };
 
-// ── 렌더링 ────────────────────────────────────────────────
-function renderBoard({ count, people, totalMs }) {
-  $('count').textContent = `지금 ${count}명이 함께 머무는 중`;
-  $('communal').textContent = `함께 채운 도량 · ${fmtDuration(totalMs)}`;
+let name = '';
+let channel = null;
+let currentSlug = '';
+let activeIdx = 0;
+let cairn = null;
+let cairnCanvas = null;
+let beadCount = 0;
 
-  $('board').innerHTML = people
-    .map((p) => {
-      const me = p.id === myId ? ' <em>(나)</em>' : '';
-      return `<li><span class="who">${escapeHtml(p.name)}${me}</span>` +
-        `<time>${fmtDuration(p.stayedMs)}</time></li>`;
-    })
-    .join('');
-}
+// ── 입장 ──────────────────────────────────────────────────
+$('enterJar').src = ENTRY_JAR;
+$('enterBtn').onclick = () => enter($('nameInput').value.trim().slice(0, 12) || '무이');
+$('nameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('enterBtn').click(); });
 
-function renderSidebar() {
-  $('channelList').innerHTML = CHANNELS
-    .map((c) => {
-      const active = c.slug === currentSlug ? ' active' : '';
-      const lock = c.locked ? ' locked' : '';
-      const badge = c.locked ? '<span class="lock">곧 열림</span>' : '';
-      return `<li class="ch${active}${lock}" data-slug="${c.slug}" ${c.locked ? '' : 'role="button" tabindex="0"'}>
-        <span class="hanja">${c.hanja}</span>
-        <span class="ch-name">${c.name}</span>
-        ${badge}
-      </li>`;
-    })
-    .join('');
-}
-
-// ── 공명(broadcast 수신) ──────────────────────────────────
-function ripple(text) {
-  const el = document.createElement('div');
-  el.className = 'ripple';
-  el.textContent = text;
-  $('ripples').appendChild(el);
-  setTimeout(() => el.remove(), 3200);
-}
-
-const handlers = {
-  onSync: renderBoard,
-  onBeadDone: ({ name: who }) => { ripple(`${who}님이 번뇌를 내려놓았습니다`); cairn.addStone(); },
-  onStone: ({ name: who }) => { ripple(`${who}님이 돌 하나를 얹었습니다`); cairn.addStone(); },
-  onStatus: (s) => { if (s === 'SUBSCRIBED') $('count').classList.remove('dim'); },
-};
-
-// ── 흐름 ──────────────────────────────────────────────────
-function applyChannelMood(slug) {
-  const ch = getChannel(slug);
-  if (!ch) return;
-  cairn.config.accent = ch.accent;
-  document.documentElement.style.setProperty('--accent', ch.accent);
-  $('roomTitle').innerHTML = `<span class="hanja">${ch.hanja}</span> ${ch.name}`;
-  $('roomDesc').textContent = ch.desc || '';
-}
-
-function enter(inputName) {
-  name = inputName;
-  currentSlug = DEFAULT_CHANNEL;
-  applyChannelMood(currentSlug);
-  channel = joinRoom(currentSlug, name, handlers);
-  cairn.start();
+function enter(nm) {
+  name = nm;
   $('enter').classList.add('hidden');
   $('app').classList.remove('hidden');
-  renderSidebar();
+  buildPages();
+  buildSidebar();
+  buildIndicator();
+  buildBeadCounter();
+  cairn = createCairn(cairnCanvas);
+  setActive(0);
 }
 
-async function changeChannel(slug) {
-  const ch = getChannel(slug);
-  if (!ch || ch.locked || slug === currentSlug) return;
+// ── 페이지 생성 ───────────────────────────────────────────
+function buildPages() {
+  const pager = $('pager');
+  pager.innerHTML = '';
+  CHANNELS.forEach((c) => {
+    const page = el('section', 'page');
+    page.dataset.slug = c.slug;
+    page.dataset.kind = c.kind;
+    page.style.background = c.bg;
+    page.style.setProperty('--page-ink', c.ink);
+
+    const head = el('div', 'page-head');
+    head.innerHTML = `<h1 class="page-title">${c.name}</h1><p class="page-sub">${c.sub}</p>`;
+    page.appendChild(head);
+
+    const illo = el('div', 'illo');
+    if (c.kind === 'cairn') {
+      cairnCanvas = document.createElement('canvas');
+      illo.appendChild(cairnCanvas);
+    } else {
+      const img = document.createElement('img');
+      img.src = c.illo; img.alt = '';
+      if (c.slug === 'beonnoe') img.addEventListener('click', onBeadTap);
+      illo.appendChild(img);
+    }
+    page.appendChild(illo);
+    pager.appendChild(page);
+  });
+
+  pager.addEventListener('scroll', scheduleActive, { passive: true });
+}
+
+// ── 스와이프 → 활성 채널 감지 ─────────────────────────────
+let scrollTimer = null;
+function scheduleActive() {
+  clearTimeout(scrollTimer);
+  scrollTimer = setTimeout(() => {
+    const pager = $('pager');
+    const i = Math.round(pager.scrollLeft / pager.clientWidth);
+    if (i !== activeIdx) setActive(i);
+  }, 140);
+}
+
+function setActive(i) {
+  activeIdx = i;
+  const c = CHANNELS[i];
+  const root = document.documentElement.style;
+  root.setProperty('--bg', c.bg);
+  root.setProperty('--ink', c.ink);
+  root.setProperty('--accent', c.accent);
+  document.body.style.background = c.bg;
+
+  updateIndicator(i);
+  updateSidebarActive(c.slug);
+  $('beadCounter').classList.toggle('hidden', c.slug !== 'beonnoe');
+
+  if (c.slug === 'chamseon') { cairn.reset(); cairn.start(); } else { cairn.stop(); }
+  switchToRoom(c.slug);
+}
+
+// ── Realtime ──────────────────────────────────────────────
+const handlers = {
+  onSync: renderPresence,
+  onBeadDone: ({ name: who }) => { ripple(`${who}님이 번뇌를 내려놓았습니다`); if (currentSlug === 'chamseon') cairn.addStone(); },
+  onStone: ({ name: who }) => { ripple(`${who}님이 돌 하나를 얹었습니다`); if (currentSlug === 'chamseon') cairn.addStone(); },
+};
+
+async function switchToRoom(slug) {
+  if (slug === currentSlug && channel) return;
   currentSlug = slug;
-  applyChannelMood(slug);
-  renderSidebar();
-  cairn.reset();
-  closeSidebar();
-  channel = await switchRoom(channel, slug, name, handlers); // 이전 방 자동 퇴장
+  renderPresence({ count: 0, people: [], totalMs: 0 }); // 전환 중 초기화
+  channel = channel
+    ? await switchRoom(channel, slug, name, handlers)
+    : joinRoom(slug, name, handlers);
+}
+
+function renderPresence({ count, people }) {
+  $('pill').textContent = count > 0 ? `지금 ${count}명이 함께 머물고 있어요` : '함께 머무는 중…';
+  $('board').innerHTML = people.map((p) => {
+    const me = p.id === myId ? ' <em>(나)</em>' : '';
+    return `<li><span>${escapeHtml(p.name)}${me}</span><time>${fmtDuration(p.stayedMs)}</time></li>`;
+  }).join('');
+}
+
+// ── 페이지 인디케이터 ─────────────────────────────────────
+function buildIndicator() {
+  $('indicator').innerHTML = CHANNELS.map(() => '<span class="dot"></span>').join('');
+}
+function updateIndicator(i) {
+  [...$('indicator').children].forEach((d, k) => d.classList.toggle('active', k === i));
 }
 
 // ── 사이드바 ──────────────────────────────────────────────
+function buildSidebar() {
+  $('channelList').innerHTML = CHANNELS.map((c) => `
+    <li class="ch-row" data-slug="${c.slug}">
+      <div class="txt">
+        <div class="ch-name">${c.name}</div>
+        <div class="ch-sub">${c.sidebarSub}</div>
+      </div>
+      <img class="ch-illo" src="${c.illo || ''}" alt="" />
+    </li>`).join('');
+  $('channelList').addEventListener('click', (e) => {
+    const row = e.target.closest('.ch-row');
+    if (row) goToChannel(row.dataset.slug);
+  });
+  $('sidebarFooter').textContent = `${name} 님으로 머무는 중`;
+  $('hamburger').onclick = openSidebar;
+  $('sidebarClose').onclick = closeSidebar;
+  $('scrim').onclick = closeSidebar;
+}
+function updateSidebarActive(slug) {
+  [...$('channelList').children].forEach((r) => r.classList.toggle('active', r.dataset.slug === slug));
+}
 function openSidebar() { $('sidebar').classList.add('open'); $('scrim').classList.add('show'); }
 function closeSidebar() { $('sidebar').classList.remove('open'); $('scrim').classList.remove('show'); }
 
-// ── 이벤트 바인딩 ─────────────────────────────────────────
-$('enterBtn').onclick = () => {
-  const v = $('nameInput').value.trim().slice(0, 12) || '무이';
-  enter(v);
-};
-$('nameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('enterBtn').click(); });
+function goToChannel(slug) {
+  const i = channelIndex(slug);
+  if (i < 0) return;
+  closeSidebar();
+  $('pager').scrollTo({ left: i * $('pager').clientWidth, behavior: 'smooth' });
+  // 스크롤 스냅이 곧 setActive 를 부르지만, 즉각 반응 위해 미리 갱신
+  setTimeout(() => setActive(i), 320);
+}
 
-$('hamburger').onclick = openSidebar;
-$('scrim').onclick = closeSidebar;
+// ── 번뇌 108탭 ────────────────────────────────────────────
+function buildBeadCounter() {
+  const c = el('div'); c.id = 'beadCounter'; c.classList.add('hidden');
+  c.innerHTML = `<div class="num">0</div><div class="sub">108번의 탭으로 마음을 비웁니다</div>`;
+  $('app').appendChild(c);
+}
+function onBeadTap(e) {
+  beadCount = Math.min(108, beadCount + 1);
+  $('beadCounter').querySelector('.num').textContent = beadCount;
+  const img = e.currentTarget;
+  img.style.transform = 'scale(0.94)';
+  setTimeout(() => { img.style.transform = ''; }, 120);
+  if (beadCount >= 108) {
+    ripple('108배를 마쳤습니다');
+    if (channel) broadcastBeadDone(channel, name);
+    beadCount = 0;
+    setTimeout(() => { $('beadCounter').querySelector('.num').textContent = '0'; }, 500);
+  }
+}
 
-$('channelList').addEventListener('click', (e) => {
-  const li = e.target.closest('.ch');
-  if (li && !li.classList.contains('locked')) changeChannel(li.dataset.slug);
-});
+// ── 공명 파동 ─────────────────────────────────────────────
+function ripple(text) {
+  const n = el('div', 'ripple'); n.textContent = text;
+  $('ripples').appendChild(n);
+  setTimeout(() => n.remove(), 3000);
+}
 
-// 108배 완료 → 공명 + 내 돌탑에도 한 개
-$('beadBtn').onclick = () => {
-  if (!channel) return;
-  broadcastBeadDone(channel, name);
-  cairn.addStone();
-  ripple('번뇌 하나를 내려놓습니다');
-};
-
-// 나가기 = 창 닫기: 정리(안 해도 서버가 곧 자동 정리)
+// ── 생명주기 ──────────────────────────────────────────────
 window.addEventListener('beforeunload', () => leave(channel));
-
-// 조용히 돌아오기: UI만 부드럽게, Presence 는 유지/자동 재등록
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && channel) ripple('돌아오셨네요');
 });
 
-// ── 유틸 ──────────────────────────────────────────────────
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

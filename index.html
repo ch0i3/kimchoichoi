@@ -2,51 +2,49 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
   <title>온라인 도량</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 </head>
 <body>
   <!-- 입장 화면 -->
   <section id="enter">
-    <div class="enter-inner">
-      <p class="concept">잠시, 함께 머무릅니다</p>
-      <h1>온라인 도량</h1>
+    <p class="enter-brand">온라인 템플스테이</p>
+    <h1 class="enter-title">비움</h1>
+    <img id="enterJar" class="enter-jar" alt="" />
+    <div class="enter-form">
       <input id="nameInput" maxlength="12" placeholder="이름을 적어주세요 (익명 · 저장 안 됨)" />
       <button id="enterBtn">들어가기</button>
-      <p class="hint">잠시 알림을 내려놓으셔도 좋습니다.</p>
     </div>
   </section>
 
   <!-- 머무는 중 -->
   <main id="app" class="hidden">
-    <canvas id="cairn"></canvas>
+    <div id="pager"><!-- 채널 페이지는 main.js 에서 생성 --></div>
 
-    <header class="topbar">
-      <button id="hamburger" aria-label="채널 전환">☰</button>
-      <div class="room-meta">
-        <h2 id="roomTitle"></h2>
-        <p id="roomDesc"></p>
-      </div>
-    </header>
+    <button id="hamburger" aria-label="채널 전환">
+      <svg width="24" height="18" viewBox="0 0 24 18" fill="none">
+        <path d="M1 1h22M1 9h22M1 17h22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
 
-    <!-- 동석 전광판 -->
-    <aside class="presence">
-      <p id="count" class="dim">함께 머무는 중…</p>
-      <p id="communal"></p>
+    <div id="presence">
       <ul id="board"></ul>
-    </aside>
+      <div id="pill">함께 머무는 중…</div>
+    </div>
 
-    <!-- 108배: 번뇌 내려놓기 -->
-    <button id="beadBtn">번뇌 내려놓기 · 108배</button>
+    <div id="indicator"></div>
 
-    <!-- 공명(broadcast) -->
     <div id="ripples"></div>
 
-    <!-- 사이드바 -->
     <div id="scrim"></div>
     <nav id="sidebar">
-      <p class="sidebar-title">도량의 하루</p>
+      <button id="sidebarClose" aria-label="닫기">✕</button>
+      <p class="sidebar-label">채널</p>
       <ul id="channelList"></ul>
+      <p id="sidebarFooter"></p>
     </nav>
   </main>
 
