@@ -124,7 +124,7 @@ img { max-width: 100%; display: block; }
 .cw-level { transform: translateY(197px); transition: transform 0.9s cubic-bezier(.32,.9,.35,1); }
 
 /* 포행 풍경(風磬) — 걸음마다 흔들림. 회전축을 그래픽 위쪽 가상 지점으로. */
-.chime-wrap { width: min(50vw, 190px); cursor: pointer; } /* Figma 일러스트 폭(~197)에 맞춰 축소 */
+.chime-wrap { width: min(50vw, 32vh); cursor: pointer; } /* 화면 비율에 따라 자연스럽게 스케일 */
 .chime-svg {
   display: block; width: 100%; height: auto;
   transform-origin: 50% -55%;
