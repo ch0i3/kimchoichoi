@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>온라인 도량</title>
+</head>
+<body>
+  <!-- 입장 화면 -->
+  <section id="enter">
+    <div class="enter-inner">
+      <p class="concept">잠시, 함께 머무릅니다</p>
+      <h1>온라인 도량</h1>
+      <input id="nameInput" maxlength="12" placeholder="이름을 적어주세요 (익명 · 저장 안 됨)" />
+      <button id="enterBtn">들어가기</button>
+      <p class="hint">잠시 알림을 내려놓으셔도 좋습니다.</p>
+    </div>
+  </section>
+
+  <!-- 머무는 중 -->
+  <main id="app" class="hidden">
+    <canvas id="cairn"></canvas>
+
+    <header class="topbar">
+      <button id="hamburger" aria-label="채널 전환">☰</button>
+      <div class="room-meta">
+        <h2 id="roomTitle"></h2>
+        <p id="roomDesc"></p>
+      </div>
+    </header>
+
+    <!-- 동석 전광판 -->
+    <aside class="presence">
+      <p id="count" class="dim">함께 머무는 중…</p>
+      <p id="communal"></p>
+      <ul id="board"></ul>
+    </aside>
+
+    <!-- 108배: 번뇌 내려놓기 -->
+    <button id="beadBtn">번뇌 내려놓기 · 108배</button>
+
+    <!-- 공명(broadcast) -->
+    <div id="ripples"></div>
+
+    <!-- 사이드바 -->
+    <div id="scrim"></div>
+    <nav id="sidebar">
+      <p class="sidebar-title">도량의 하루</p>
+      <ul id="channelList"></ul>
+    </nav>
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

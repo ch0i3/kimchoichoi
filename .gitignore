@@ -1,0 +1,13 @@
+node_modules/
+dist/
+
+# 환경변수 (anon key라도 개인 프로젝트 URL이므로 커밋하지 않음)
+.env
+.env.local
+.env.*.local
+
+# OS / 에디터
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+*.log
