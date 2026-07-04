@@ -69,7 +69,6 @@ function enter(nm) {
   buildPages();
   buildSidebar();
   buildIndicator();
-  buildBeadCounter();
   buildChatBar();
   cairn = createCairn(cairnCanvas);
   jar = createJar(jarCanvas, { onTap: onBeadTap, onEmpty: onBeadEmpty });
@@ -101,6 +100,10 @@ function buildPages() {
     } else if (c.kind === 'jar') {
       jarCanvas = document.createElement('canvas');
       illo.appendChild(jarCanvas);
+      // 카운터를 번뇌 페이지 안에 둔다 → 스와이프 시 페이지와 함께 밀려나가고 뜨지 않음
+      const counter = el('div'); counter.id = 'beadCounter';
+      counter.innerHTML = `<div class="num">108</div><div class="sub">항아리를 두드려 번뇌를 비웁니다</div>`;
+      page.appendChild(counter);
     } else if (c.slug === 'dadam') {
       // 찻잔: 내부 모양에 클립된 물(SVG) + 위에 찻잔 이미지
       const wrap = el('div', 'cup-wrap');
@@ -155,7 +158,6 @@ function setActive(i) {
 
   updateIndicator(i);
   updateSidebarActive(c.slug);
-  $('beadCounter').classList.toggle('hidden', c.slug !== 'beonnoe');
   $('chatBar').classList.toggle('hidden', !c.chat);      // 다담: 채팅바
   $('presence').classList.remove('hidden');              // 현황은 항상 보이게
   $('app').classList.toggle('chat-layout', !!c.chat);    // 다담: 현황을 채팅 위로 올림
@@ -250,11 +252,6 @@ function goToChannel(slug) {
 }
 
 // ── 번뇌 108탭 ────────────────────────────────────────────
-function buildBeadCounter() {
-  const c = el('div'); c.id = 'beadCounter'; c.classList.add('hidden');
-  c.innerHTML = `<div class="num">108</div><div class="sub">항아리를 두드려 번뇌를 비웁니다</div>`;
-  $('app').appendChild(c);
-}
 // jar 가 탭을 처리하고 남은 횟수를 넘겨준다
 function onBeadTap(count, remaining) {
   $('beadCounter').querySelector('.num').textContent = remaining;

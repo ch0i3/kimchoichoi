@@ -38,11 +38,13 @@ export function playChannel(slug) {
   if (!url) return; // 앰비언트 없는 방(다담) → 무음
   const el = new Audio(url);
   el.loop = true;
-  el.muted = muted;   // iOS는 volume 무시 → muted 속성으로 음소거 상태 유지
+  el.muted = muted;
   el.volume = 0;
-  el.play().catch(() => {}); // 사용자 제스처 이후여야 재생됨
   current = { slug, el };
-  if (!muted) fade(el, baseVol, 500); // 새 채널만 잔잔히 페이드인 (iOS는 volume 무시)
+  if (!muted) { // 음소거 중이면 재생 자체를 안 함 (해제 시 재생)
+    el.play().catch(() => {});
+    fade(el, baseVol, 500); // 잔잔히 페이드인 (iOS는 volume 무시하지만 재생은 됨)
+  }
 }
 
 /** 다담 채팅 물소리 (원샷). 채팅 한마디마다 한 번. */
@@ -58,9 +60,13 @@ export function isMuted() { return muted; }
 export function setMuted(v) {
   muted = v;
   fadeToken++; // 진행 중 페이드 취소
-  if (current) {
-    current.el.muted = v;                // iOS 포함 확실한 음소거 (iOS는 volume 무시)
-    current.el.volume = v ? 0 : baseVol; // 데스크톱 볼륨
+  if (!current) return;
+  current.el.muted = v;
+  if (v) {
+    current.el.pause();                 // iOS는 volume 무시 → 아예 멈춰서 확실히 음소거
+  } else {
+    current.el.volume = baseVol;
+    current.el.play().catch(() => {});  // 해제 시 다시 재생 (버튼 클릭=제스처라 허용됨)
   }
 }
 

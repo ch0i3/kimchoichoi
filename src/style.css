@@ -124,7 +124,7 @@ img { max-width: 100%; display: block; }
 .cw-level { transform: translateY(197px); transition: transform 0.9s cubic-bezier(.32,.9,.35,1); }
 
 /* 포행 풍경(風磬) — 걸음마다 흔들림. 회전축을 그래픽 위쪽 가상 지점으로. */
-.chime-wrap { width: min(50vw, 32vh); cursor: pointer; } /* 화면 비율에 따라 자연스럽게 스케일 */
+.chime-wrap { width: min(50vw, 32vh); cursor: pointer; transform: translateY(14px); } /* 화면 비율 스케일 + 14px 아래로 */
 .chime-svg {
   display: block; width: 100%; height: auto;
   transform-origin: 50% -55%;
@@ -245,11 +245,11 @@ img { max-width: 100%; display: block; }
 }
 #chatSendBtn:active { transform: scale(0.9); }
 
-/* 번뇌 카운터 — 항아리 중앙에 표시 */
+/* 번뇌 카운터 — 항아리 중앙에 표시 (번뇌 페이지 안에 위치 → 스와이프 시 함께 이동) */
 #beadCounter {
   position: absolute; left: 0; right: 0; top: 54%; transform: translateY(-50%);
   z-index: 4; font-family: var(--font-title); font-weight: 700;
-  color: var(--ink); pointer-events: none; text-align: center;
+  color: var(--page-ink); pointer-events: none; text-align: center;
 }
 #beadCounter .num { font-size: 52px; line-height: 1; font-variant-numeric: tabular-nums; }
 #beadCounter .sub { font-size: 13px; font-weight: 400; opacity: 0.6; margin-top: 6px; }
