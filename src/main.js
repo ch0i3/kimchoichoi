@@ -8,6 +8,7 @@ import { createCairn } from './cairn.js';
 import { createJar } from './jar.js';
 import { createPedometer } from './pedometer.js';
 import { playChannel, playWater, setMuted, stopAll } from './audio.js';
+import { createPresenceHub } from './presenceHub.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls) => { const n = document.createElement(tag); if (cls) n.className = cls; return n; };
@@ -28,6 +29,7 @@ const WATER_STEP = 16; // 한마디당 채워지는 비율(%)
 let chimeEl = null;
 let stepCount = 0;
 const pedo = createPedometer(onStep);
+let presenceHub = null; // 전체 채널 인원 집계(사이드바)
 
 // 다담 찻잔 물 — 찻잔 내부 모양(clipPath)에 물을 클립. 수면은 SMIL로 출렁이고,
 // 물 그룹(.cw-level)을 위/아래로 옮겨 수위를 조절한다. CSS 마스크보다 모바일에서 확실.
@@ -68,6 +70,7 @@ function enter(nm) {
   updatePageScale();
   buildPages();
   buildSidebar();
+  presenceHub = createPresenceHub(CHANNELS.map((c) => c.slug), updateChannelCounts);
   buildIndicator();
   buildChatBar();
   cairn = createCairn(cairnCanvas);
@@ -225,6 +228,7 @@ function buildSidebar() {
         <div class="ch-name">${c.name}</div>
         <div class="ch-sub">${c.sidebarSub}</div>
       </div>
+      <span class="ch-count">0명</span>
       <img class="ch-illo" src="${c.icon || c.illo || ''}" alt="" />
     </li>`).join('');
   $('channelList').addEventListener('click', (e) => {
@@ -238,6 +242,15 @@ function buildSidebar() {
 }
 function updateSidebarActive(slug) {
   [...$('channelList').children].forEach((r) => r.classList.toggle('active', r.dataset.slug === slug));
+}
+// 전체 채널 인원 집계 → 사이드바 채널별 N명 + 총 N명 갱신
+function updateChannelCounts(counts, total) {
+  CHANNELS.forEach((c) => {
+    const cnt = $('channelList').querySelector(`.ch-row[data-slug="${c.slug}"] .ch-count`);
+    if (cnt) cnt.textContent = `${counts[c.slug] || 0}명`;
+  });
+  const t = $('sidebarTotal');
+  if (t) t.textContent = `지금 모든 방에 총 ${total}명이 머무는 중`;
 }
 function openSidebar() { setStatus(false); $('sidebar').classList.add('open'); $('scrim').classList.add('show'); }
 function closeSidebar() { $('sidebar').classList.remove('open'); $('scrim').classList.remove('show'); }
@@ -410,7 +423,7 @@ function ripple(text) {
 }
 
 // ── 생명주기 ──────────────────────────────────────────────
-window.addEventListener('beforeunload', () => { leave(channel); stopAll(); });
+window.addEventListener('beforeunload', () => { leave(channel); stopAll(); presenceHub?.destroy(); });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && channel) ripple('돌아오셨네요');
 });
